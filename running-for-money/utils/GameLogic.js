@@ -1,62 +1,83 @@
 // GameLogic.js
-import { getRandomBytes } from 'expo-random';
+export const movePlayerTo = (currentPosition, targetPosition) => {
+  // Simple logic to move directly to target position
+  return targetPosition;
+};
 
-const MAP_WIDTH = 100; // Largura do mapa
-const MAP_HEIGHT = 100; // Altura do mapa
-
-export const movePlayer = (position, direction) => {
+export const movePlayer = (currentPosition, direction) => {
+  let newPosition = { ...currentPosition };
   switch (direction) {
     case 'UP':
-      return { x: position.x, y: Math.max(position.y - 1, 0) };
+      newPosition.y -= 10;
+      break;
     case 'DOWN':
-      return { x: position.x, y: Math.min(position.y + 1, MAP_HEIGHT - 1) };
+      newPosition.y += 10;
+      break;
     case 'LEFT':
-      return { x: Math.max(position.x - 1, 0), y: position.y };
+      newPosition.x -= 10;
+      break;
     case 'RIGHT':
-      return { x: Math.min(position.x + 1, MAP_WIDTH - 1), y: position.y };
-    default:
-      return position;
+      newPosition.x += 10;
+      break;
   }
+  return newPosition;
 };
 
 export const checkCollisionWithCoins = (playerPosition, coinPositions) => {
   for (let i = 0; i < coinPositions.length; i++) {
-    const coin = coinPositions[i];
-    if (coin.x === playerPosition.x && coin.y === playerPosition.y) {
-      return i; // Retorna o índice da moeda coletada
+    if (
+      Math.abs(playerPosition.x - coinPositions[i].x) < 10 &&
+      Math.abs(playerPosition.y - coinPositions[i].y) < 10
+    ) {
+      return i;
     }
   }
-  return -1; // Nenhuma colisão
+  return -1;
 };
 
 export const checkCollisionWithGhosts = (playerPosition, ghostPositions) => {
   for (let i = 0; i < ghostPositions.length; i++) {
-    const ghost = ghostPositions[i];
-    if (ghost.x === playerPosition.x && ghost.y === playerPosition.y) {
-      return true; // Colisão com fantasma
+    if (
+      Math.abs(playerPosition.x - ghostPositions[i].x) < 10 &&
+      Math.abs(playerPosition.y - ghostPositions[i].y) < 10
+    ) {
+      return true;
     }
   }
-  return false; // Nenhuma colisão
+  return false;
 };
 
-const getRandomPosition = async () => {
-  const randomBytes = await getRandomBytes(2);
-  const x = randomBytes[0] % MAP_WIDTH;
-  const y = randomBytes[1] % MAP_HEIGHT;
-  return { x, y };
-};
-
-const generateRandomCoins = async (numCoins) => {
-  const coins = [];
-  for (let i = 0; i < numCoins; i++) {
-    coins.push(await getRandomPosition());
-  }
-  return coins;
+export const moveGhosts = async (ghostPositions, playerPosition) => {
+  return ghostPositions.map((ghost) => {
+    // Simplified ghost movement logic towards the player
+    let newGhostPosition = { ...ghost };
+    if (playerPosition.x > ghost.x) {
+      newGhostPosition.x += 5;
+    } else if (playerPosition.x < ghost.x) {
+      newGhostPosition.x -= 5;
+    }
+    if (playerPosition.y > ghost.y) {
+      newGhostPosition.y += 5;
+    } else if (playerPosition.y < ghost.y) {
+      newGhostPosition.y -= 5;
+    }
+    return newGhostPosition;
+  });
 };
 
 export const setupGame = async () => {
-  const playerPosition = { x: 0, y: 0 }; // Posição inicial do jogador
-  const ghostPositions = [await getRandomPosition(), await getRandomPosition()]; // Posições iniciais dos fantasmas
-  const coinPositions = await generateRandomCoins(10); // Posições aleatórias das moedas
+  const playerPosition = { x: 150, y: 150 }; // Center position assuming map is 300x300
+  const ghostPositions = [
+    { x: 0, y: 0 },
+    { x: 0, y: 300 },
+    { x: 300, y: 0 },
+    { x: 300, y: 300 },
+  ];
+  const coinPositions = [
+    { x: 100, y: 100 },
+    { x: 200, y: 200 },
+    { x: 100, y: 200 },
+    { x: 200, y: 100 },
+  ];
   return { playerPosition, ghostPositions, coinPositions };
 };

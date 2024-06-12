@@ -1,11 +1,11 @@
 // GameScreen.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, Alert, Button, StyleSheet } from 'react-native';
+import { View, Text, Alert, StyleSheet, TouchableWithoutFeedback } from 'react-native';
 import MapComponent from '../components/MapComponent';
 import PlayerComponent from '../components/PlayerComponent';
 import GhostComponent from '../components/GhostComponent';
 import CoinComponent from '../components/CoinComponent';
-import { setupGame, movePlayer, checkCollisionWithCoins, checkCollisionWithGhosts } from '../utils/GameLogic';
+import { setupGame, movePlayerTo, checkCollisionWithCoins, checkCollisionWithGhosts, moveGhosts } from '../utils/GameLogic';
 
 const GameScreen = () => {
   const [gameOver, setGameOver] = useState(false);
@@ -13,6 +13,11 @@ const GameScreen = () => {
   const [playerPosition, setPlayerPosition] = useState({ x: 0, y: 0 });
   const [ghostPositions, setGhostPositions] = useState([]);
   const [coinPositions, setCoinPositions] = useState([]);
+
+  const handleTouch = (evt) => {
+    const { locationX, locationY } = evt.nativeEvent;
+    handleMoveTo({ x: locationX, y: locationY });
+  };
 
   useEffect(() => {
     const initializeGame = async () => {
@@ -48,6 +53,16 @@ const GameScreen = () => {
     }
   }, [playerPosition, ghostPositions, coinPositions]);
 
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (!gameOver) {
+        const newGhostPositions = await moveGhosts(ghostPositions, playerPosition);
+        setGhostPositions(newGhostPositions);
+      }
+    }, 300); // Move ghosts every 300ms for increased speed
+    return () => clearInterval(interval);
+  }, [ghostPositions, playerPosition, gameOver]);
+
   const resetGame = async () => {
     setGameOver(false);
     setScore(0);
@@ -57,54 +72,49 @@ const GameScreen = () => {
     setCoinPositions(coinPositions || []);
   };
 
-  const handleMove = (direction) => {
+  const handleMoveTo = (targetPosition) => {
     if (!gameOver) {
-      const newPosition = movePlayer(playerPosition, direction);
+      const newPosition = movePlayerTo(playerPosition, targetPosition);
       setPlayerPosition(newPosition);
     }
   };
 
   return (
-    <View style={{ flex: 1 }}>
-      <MapComponent />
-      <PlayerComponent position={playerPosition} />
-      {ghostPositions.map((position, index) => (
-        <GhostComponent key={index} position={position} />
-      ))}
-      {coinPositions.map((position, index) => (
-        <CoinComponent key={index} position={position} />
-      ))}
-      <Text style={{ position: 'absolute', top: 10, right: 10, fontSize: 20 }}>Score: {score}</Text>
-      
-      {/* Controle de movimentação */}
-      <View style={styles.controls}>
-        <View style={styles.controlRow}>
-          <Button title="Up" onPress={() => handleMove('UP')} />
+    <TouchableWithoutFeedback onPress={handleTouch}>
+      <View style={styles.container}>
+        <View style={styles.mapContainer}>
+          <MapComponent />
+          <PlayerComponent position={playerPosition} />
+          {ghostPositions.map((position, index) => (
+            <GhostComponent key={index} position={position} />
+          ))}
+          {coinPositions.map((position, index) => (
+            <CoinComponent key={index} position={position} />
+          ))}
         </View>
-        <View style={styles.controlRow}>
-          <Button title="Left" onPress={() => handleMove('LEFT')} />
-          <Button title="Right" onPress={() => handleMove('RIGHT')} />
-        </View>
-        <View style={styles.controlRow}>
-          <Button title="Down" onPress={() => handleMove('DOWN')} />
-        </View>
+        <Text style={styles.score}>Score: {score}</Text>
       </View>
-    </View>
+    </TouchableWithoutFeedback>
   );
 };
 
 const styles = StyleSheet.create({
-  controls: {
-    position: 'absolute',
-    bottom: 50,
-    left: 50,
-    right: 50,
+  container: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#fff',
   },
-  controlRow: {
-    flexDirection: 'row',
-    margin: 5,
+  mapContainer: {
+    position: 'relative',
+    width: 300, // Adjust based on your map size
+    height: 300, // Adjust based on your map size
+  },
+  score: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    fontSize: 20,
   },
 });
 
