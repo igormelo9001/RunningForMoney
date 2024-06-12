@@ -5,7 +5,8 @@ import MapComponent from '../components/MapComponent';
 import PlayerComponent from '../components/PlayerComponent';
 import GhostComponent from '../components/GhostComponent';
 import CoinComponent from '../components/CoinComponent';
-import { setupGame, movePlayerTo, checkCollisionWithCoins, checkCollisionWithGhosts, moveGhosts } from '../utils/GameLogic';
+import BarComponent from '../components/BarComponent';
+import { setupGame, movePlayerTo, checkCollisionWithCoins, checkCollisionWithGhosts, moveGhosts, checkCollisionWithBars } from '../utils/GameLogic';
 
 const GameScreen = () => {
   const [gameOver, setGameOver] = useState(false);
@@ -13,6 +14,7 @@ const GameScreen = () => {
   const [playerPosition, setPlayerPosition] = useState({ x: 0, y: 0 });
   const [ghostPositions, setGhostPositions] = useState([]);
   const [coinPositions, setCoinPositions] = useState([]);
+  const [barPositions, setBarPositions] = useState([]);
 
   const handleTouch = (evt) => {
     const { locationX, locationY } = evt.nativeEvent;
@@ -21,19 +23,20 @@ const GameScreen = () => {
 
   useEffect(() => {
     const initializeGame = async () => {
-      const { playerPosition, ghostPositions, coinPositions } = await setupGame();
+      const { playerPosition, ghostPositions, coinPositions, barPositions } = await setupGame();
       setPlayerPosition(playerPosition);
       setGhostPositions(ghostPositions || []);
       setCoinPositions(coinPositions || []);
+      setBarPositions(barPositions || []);
     };
     initializeGame();
   }, []);
 
   useEffect(() => {
     const handleCollision = () => {
-      if (checkCollisionWithGhosts(playerPosition, ghostPositions)) {
+      if (checkCollisionWithGhosts(playerPosition, ghostPositions) || checkCollisionWithBars(playerPosition, barPositions)) {
         setGameOver(true);
-        Alert.alert('Game Over', 'Você foi pego por um fantasma! Deseja reiniciar o jogo?', [
+        Alert.alert('Game Over', 'Você foi pego por um fantasma ou colidiu com uma barra! Deseja reiniciar o jogo?', [
           { text: 'Sim', onPress: resetGame },
           { text: 'Não', onPress: () => console.log('Jogo encerrado') }
         ]);
@@ -51,7 +54,7 @@ const GameScreen = () => {
     if (!gameOver) {
       handleCollision();
     }
-  }, [playerPosition, ghostPositions, coinPositions]);
+  }, [playerPosition, ghostPositions, coinPositions, barPositions]);
 
   useEffect(() => {
     const interval = setInterval(async () => {
@@ -66,16 +69,19 @@ const GameScreen = () => {
   const resetGame = async () => {
     setGameOver(false);
     setScore(0);
-    const { playerPosition, ghostPositions, coinPositions } = await setupGame();
+    const { playerPosition, ghostPositions, coinPositions, barPositions } = await setupGame();
     setPlayerPosition(playerPosition);
     setGhostPositions(ghostPositions || []);
     setCoinPositions(coinPositions || []);
+    setBarPositions(barPositions || []);
   };
 
   const handleMoveTo = (targetPosition) => {
     if (!gameOver) {
       const newPosition = movePlayerTo(playerPosition, targetPosition);
-      setPlayerPosition(newPosition);
+      if (!checkCollisionWithBars(newPosition, barPositions)) {
+        setPlayerPosition(newPosition);
+      }
     }
   };
 
@@ -91,6 +97,9 @@ const GameScreen = () => {
           {coinPositions.map((position, index) => (
             <CoinComponent key={index} position={position} />
           ))}
+          {barPositions.map((position, index) => (
+            <BarComponent key={index} position={position} size={position.size} />
+          ))}
         </View>
         <Text style={styles.score}>Score: {score}</Text>
       </View>
@@ -103,18 +112,19 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#000',
   },
   mapContainer: {
     position: 'relative',
-    width: 300, // Adjust based on your map size
-    height: 300, // Adjust based on your map size
+    width: 600,
+    height: 600,
   },
   score: {
     position: 'absolute',
     top: 10,
     right: 10,
     fontSize: 20,
+    color: '#fff',
   },
 });
 
