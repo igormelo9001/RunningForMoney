@@ -1,12 +1,12 @@
-// GameScreen.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, Alert, StyleSheet, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, Alert, StyleSheet, TouchableWithoutFeedback, BackHandler } from 'react-native';
 import MapComponent from '../components/MapComponent';
 import PlayerComponent from '../components/PlayerComponent';
 import GhostComponent from '../components/GhostComponent';
 import CoinComponent from '../components/CoinComponent';
 import BarComponent from '../components/BarComponent';
 import { setupGame, movePlayerTo, checkCollisionWithCoins, checkCollisionWithGhosts, moveGhosts, checkCollisionWithBars } from '../utils/GameLogic';
+import { playBackgroundMusic, stopBackgroundMusic } from '../utils/AudioManager';
 
 const GameScreen = () => {
   const [gameOver, setGameOver] = useState(false);
@@ -23,6 +23,7 @@ const GameScreen = () => {
 
   useEffect(() => {
     const initializeGame = async () => {
+      await playBackgroundMusic();
       const { playerPosition, ghostPositions, coinPositions, barPositions } = await setupGame();
       setPlayerPosition(playerPosition);
       setGhostPositions(ghostPositions || []);
@@ -30,16 +31,24 @@ const GameScreen = () => {
       setBarPositions(barPositions || []);
     };
     initializeGame();
+    return () => {
+      stopBackgroundMusic();
+    };
   }, []);
 
   useEffect(() => {
     const handleCollision = () => {
       if (checkCollisionWithGhosts(playerPosition, ghostPositions) || checkCollisionWithBars(playerPosition, barPositions)) {
         setGameOver(true);
-        Alert.alert('Game Over', 'Você foi pego por um fantasma ou colidiu com uma barra! Deseja reiniciar o jogo?', [
-          { text: 'Sim', onPress: resetGame },
-          { text: 'Não', onPress: () => console.log('Jogo encerrado') }
-        ]);
+        stopBackgroundMusic();
+        Alert.alert(
+          'Game Over',
+          'Você foi pego por um fantasma ou colidiu com uma barra! Deseja reiniciar o jogo?',
+          [
+            { text: 'Sim', onPress: () => resetGame() },
+            { text: 'Não', onPress: () => BackHandler.exitApp() }
+          ]
+        );
       } else {
         const collectedCoinIndex = checkCollisionWithCoins(playerPosition, coinPositions);
         if (collectedCoinIndex !== -1) {
@@ -69,6 +78,7 @@ const GameScreen = () => {
   const resetGame = async () => {
     setGameOver(false);
     setScore(0);
+    await playBackgroundMusic();
     const { playerPosition, ghostPositions, coinPositions, barPositions } = await setupGame();
     setPlayerPosition(playerPosition);
     setGhostPositions(ghostPositions || []);
@@ -97,8 +107,8 @@ const GameScreen = () => {
           {coinPositions.map((position, index) => (
             <CoinComponent key={index} position={position} />
           ))}
-          {barPositions.map((position, index) => (
-            <BarComponent key={index} position={position} size={position.size} />
+          {barPositions.map((bar, index) => (
+            <BarComponent key={index} position={bar.position} size={bar.size} />
           ))}
         </View>
         <Text style={styles.score}>Score: {score}</Text>
